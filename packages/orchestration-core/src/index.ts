@@ -25,5 +25,8 @@ export {
 export * from './workflow/types.js';
 export { WorkflowBuilder, workflow } from './workflow/dsl.js';
 
+// Tools
+export * from './tools/index.js';
+
 // Version
 export const VERSION = '0.1.0';
