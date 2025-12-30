@@ -323,7 +323,9 @@ export const httpFetchTool = createTool<HttpFetchInput, HttpFetchOutput>()
 // Export all example tools
 // ============================================================================
 
-export const exampleTools: Tool[] = [
+// Use type assertion to allow mixing different tool input/output types
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const exampleTools: Tool<any, any>[] = [
   calculatorTool,
   jsonParserTool,
   textTransformTool,
@@ -336,7 +338,8 @@ export const exampleTools: Tool[] = [
  * Register all example tools with a registry
  */
 export function registerExampleTools(registry: {
-  register: (tool: Tool) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  register: (tool: Tool<any, any>) => void;
 }): void {
   for (const tool of exampleTools) {
     registry.register(tool);

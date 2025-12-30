@@ -13,11 +13,18 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio"
   },
-  "keywords": ["agent", "orchestration", "ai", "workflow", "multi-agent"],
+  "keywords": [
+    "agent",
+    "orchestration",
+    "ai",
+    "workflow",
+    "multi-agent"
+  ],
   "author": "",
   "license": "MIT",
   "type": "module",
   "dependencies": {
+    "@fastify/cors": "^11.2.0",
     "@fastify/websocket": "^11.2.0",
     "@prisma/client": "^7.2.0",
     "@types/node": "^25.0.3",

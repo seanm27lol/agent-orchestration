@@ -8,8 +8,30 @@
  */
 
 // Agent types and abstractions
-export * from './agents/types.js';
-export { AgentRegistry } from './agents/registry.js';
+export type {
+  AgentId,
+  TaskId,
+  WorkflowId,
+  ChannelId,
+  AgentRegistration,
+  AgentMessage,
+  AgentSpawnConfig,
+  AgentSpawnResponse,
+  AgentPoolConfig,
+  AgentLifecycleEvent,
+  AgentObservation,
+  AgentAction,
+  ToolCall,
+  DelegationRequest,
+  AgentMetrics,
+  AgentState,
+} from './agents/types.js';
+export {
+  AgentCapability,
+  AgentStatus,
+} from './agents/types.js';
+// Note: ToolResult from agents/types conflicts with tools/types - use tools version
+export { AgentRegistry, globalAgentRegistry } from './agents/registry.js';
 
 // Communication
 export {
@@ -21,12 +43,74 @@ export {
   type StateHandler,
 } from './communication/event-bus.js';
 
-// Workflow
-export * from './workflow/types.js';
+// Workflow types
+export type {
+  TaskInput,
+  RetryPolicy,
+  TaskNode,
+  ConditionalBranch,
+  TaskEdge,
+  WorkflowInputDef,
+  WorkflowOutputDef,
+  WorkflowDAG,
+  TaskExecutionState,
+  WorkflowExecutionState,
+  WorkflowEvent,
+} from './workflow/types.js';
+export {
+  TaskExecutionStatus,
+  WorkflowExecutionStatus,
+} from './workflow/types.js';
 export { WorkflowBuilder, workflow } from './workflow/dsl.js';
+export {
+  WorkflowExecutor,
+  globalWorkflowExecutor,
+  executeWorkflow,
+  type ExecutionConfig,
+  type TaskExecution,
+  type WorkflowExecution,
+  type ExecutionProgress,
+  type TaskHandler,
+} from './workflow/executor.js';
 
 // Tools
-export * from './tools/index.js';
+export type {
+  ToolDefinition,
+  ToolParameter,
+  ToolInvocation,
+  ToolResult,
+  ToolContext,
+  ToolExecutionOptions,
+  Tool,
+  ToolHandler,
+} from './tools/types.js';
+export { ToolCategory, ToolErrorCode } from './tools/types.js';
+export {
+  ToolRegistry,
+  globalToolRegistry,
+  ToolValidationError,
+  ToolExecutionError,
+} from './tools/registry.js';
+export { ToolBuilderImpl, createTool, simpleTool } from './tools/builder.js';
+export {
+  calculatorTool,
+  jsonParserTool,
+  textTransformTool,
+  dateTimeTool,
+  randomTool,
+  httpFetchTool,
+  exampleTools,
+  registerExampleTools,
+} from './tools/examples.js';
+
+// API Server
+export {
+  createServer,
+  startServer,
+  defaultConfig,
+  type ServerConfig,
+  type ServerContext,
+} from './api/index.js';
 
 // Version
 export const VERSION = '0.1.0';

@@ -192,7 +192,13 @@ export class ToolBuilderImpl<TInput = Record<string, unknown>, TOutput = unknown
       category: this._category,
       parameters: this._parameters,
       returns: this._returns,
-      examples: this._examples.length > 0 ? this._examples : undefined,
+      examples: this._examples.length > 0
+        ? this._examples.map(e => ({
+            description: e.description,
+            input: e.input as Record<string, unknown>,
+            output: e.output as unknown,
+          }))
+        : undefined,
       metadata: Object.keys(this._metadata).length > 0 ? this._metadata : undefined,
     };
 

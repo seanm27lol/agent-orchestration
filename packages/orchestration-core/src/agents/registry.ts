@@ -341,4 +341,19 @@ export class AgentRegistry {
       byType,
     };
   }
+
+  /**
+   * List all unique agent types currently registered
+   */
+  listAgentTypes(): string[] {
+    const types = new Set<string>();
+    for (const agent of this.agents.values()) {
+      types.add(agent.type);
+    }
+    return Array.from(types);
+  }
 }
+
+// Export singleton instance with default event bus
+import { globalEventBus } from '../communication/event-bus.js';
+export const globalAgentRegistry = new AgentRegistry(globalEventBus);

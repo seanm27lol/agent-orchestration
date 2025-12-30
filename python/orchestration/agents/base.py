@@ -19,6 +19,16 @@ Message: TypeAlias = Dict[str, Any]
 ToolResult: TypeAlias = Dict[str, Any]
 
 
+class AgentStatus(Enum):
+    """Status of an agent."""
+    IDLE = "idle"
+    RUNNING = "running"
+    WAITING = "waiting"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    TERMINATED = "terminated"
+
+
 class AgentCapability(Enum):
     """Capabilities that an agent can possess."""
     TEXT_GENERATION = "text_generation"
@@ -57,19 +67,40 @@ class AgentState:
 class AgentObservation:
     """Observation received by an agent from the environment or other agents."""
     source: AgentId
-    content: Any
-    observation_type: str  # "message", "tool_result", "state_update", "task_input"
+    data: Any = None  # Primary data payload
+    context: Dict[str, Any] = field(default_factory=dict)
+    observation_type: str = "message"  # "message", "tool_result", "state_update", "task_input"
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    # Backwards compatibility alias
+    @property
+    def content(self) -> Any:
+        return self.data
+
+    @content.setter
+    def content(self, value: Any):
+        self.data = value
 
 
 @dataclass
 class AgentAction:
     """Action produced by an agent in response to observations."""
     action_type: str  # "message", "tool_call", "delegate", "complete", "error"
-    content: Any
+    data: Any = None  # Primary action data
+    reasoning: Optional[str] = None  # Optional explanation of the action
+    confidence: Optional[float] = None  # Optional confidence score (0-1)
     metadata: Dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.utcnow)
+
+    # Backwards compatibility alias
+    @property
+    def content(self) -> Any:
+        return self.data
+
+    @content.setter
+    def content(self, value: Any):
+        self.data = value
 
 
 @dataclass
@@ -101,15 +132,29 @@ class Agent(ABC):
     def __init__(
         self,
         agent_id: AgentId,
-        capabilities: List[AgentCapability],
+        capabilities: Optional[List[AgentCapability]] = None,
         name: Optional[str] = None,
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ):
         self.agent_id = agent_id
-        self.capabilities = capabilities
+        self.capabilities = capabilities or []
         self.name = name or f"agent-{agent_id[:8]}"
+        self.config = config or {}
+        self.metadata: Dict[str, Any] = kwargs
         self.state = AgentState()
+        self._status = AgentStatus.IDLE
         self._step_count = 0
         self._created_at = datetime.utcnow()
+
+    @property
+    def status(self) -> AgentStatus:
+        """Current agent status."""
+        return self._status
+
+    @status.setter
+    def status(self, value: AgentStatus):
+        self._status = value
 
     @abstractmethod
     async def initialize(self) -> AgentObservation:
@@ -191,20 +236,24 @@ class SimpleAgent(Agent):
         agent_id: AgentId,
         capabilities: Optional[List[AgentCapability]] = None,
         name: Optional[str] = None,
-        system_prompt: str = "You are a helpful assistant.",
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs,
     ):
         super().__init__(
             agent_id=agent_id,
             capabilities=capabilities or [AgentCapability.TEXT_GENERATION],
             name=name,
+            config=config,
+            **kwargs,
         )
-        self.system_prompt = system_prompt
+        self.system_prompt = (config or {}).get("system_prompt", "You are a helpful assistant.")
 
     async def initialize(self) -> AgentObservation:
         """Initialize with the system prompt."""
+        self._status = AgentStatus.RUNNING
         return AgentObservation(
             source="system",
-            content={"status": "initialized", "system_prompt": self.system_prompt},
+            data={"status": "initialized", "system_prompt": self.system_prompt},
             observation_type="state_update",
         )
 
@@ -213,11 +262,11 @@ class SimpleAgent(Agent):
         self._step_count += 1
         self.state.add_to_memory({
             "role": "user" if observation.source != "system" else "system",
-            "content": str(observation.content),
+            "content": str(observation.data),
         })
 
         # Simple echo behavior - override in subclasses for real logic
-        response = f"Received: {observation.content}"
+        response = f"Received: {observation.data}"
 
         self.state.add_to_memory({
             "role": "assistant",
@@ -226,11 +275,12 @@ class SimpleAgent(Agent):
 
         return AgentAction(
             action_type="message",
-            content=response,
+            data=response,
         )
 
     async def finalize(self) -> Dict[str, Any]:
         """Return final metrics."""
+        self._status = AgentStatus.COMPLETED
         return self.get_metrics()
 
 
