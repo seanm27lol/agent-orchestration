@@ -1,0 +1,159 @@
+// Agent Orchestration Framework - Database Schema
+// Using Prisma ORM for type-safe database access
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"  // Use SQLite for development, switch to PostgreSQL for production
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Workflow Definitions
+// ============================================================================
+
+model Workflow {
+  id          String      @id @default(uuid())
+  name        String
+  version     String
+  description String?
+  definition  String      // JSON serialized WorkflowDAG
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  createdBy   String?
+
+  executions  Execution[]
+
+  @@unique([name, version])
+  @@index([isActive])
+}
+
+// ============================================================================
+// Workflow Executions
+// ============================================================================
+
+model Execution {
+  id          String    @id @default(uuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id])
+  status      String    // pending, running, completed, failed, cancelled
+  inputs      String    // JSON
+  outputs     String?   // JSON
+  error       String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  tasks       TaskExecution[]
+  events      ExecutionEvent[]
+
+  @@index([workflowId, status])
+  @@index([status, startedAt])
+}
+
+model TaskExecution {
+  id          String    @id @default(uuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  taskId      String    // ID from workflow definition
+  agentId     String?
+  status      String    // pending, running, completed, failed, skipped
+  inputs      String    // JSON
+  outputs     String?   // JSON
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  retryCount  Int       @default(0)
+  durationMs  Int?
+
+  @@unique([executionId, taskId])
+  @@index([agentId, status])
+}
+
+// ============================================================================
+// Execution Events (for debugging and audit)
+// ============================================================================
+
+model ExecutionEvent {
+  id          String    @id @default(uuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  eventType   String    // task_started, task_completed, message_sent, etc.
+  taskId      String?
+  agentId     String?
+  payload     String    // JSON
+  timestamp   DateTime  @default(now())
+
+  @@index([executionId, timestamp])
+  @@index([eventType])
+}
+
+// ============================================================================
+// Agent Registry
+// ============================================================================
+
+model AgentRegistration {
+  id           String   @id @default(uuid())
+  agentType    String
+  name         String
+  capabilities String   // JSON array
+  endpoint     String
+  status       String   @default("offline")
+  metadata     String?  // JSON
+  registeredAt DateTime @default(now())
+  lastHeartbeat DateTime?
+
+  memories      AgentMemory[]
+  conversations Conversation[]
+
+  @@index([agentType, status])
+}
+
+// ============================================================================
+// Agent State Persistence
+// ============================================================================
+
+model AgentMemory {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     AgentRegistration @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  key       String
+  value     String   // JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([agentId, key])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  agentId   String
+  agent     AgentRegistration @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  sessionId String?
+  messages  String   // JSON array
+  metadata  String?  // JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([agentId, sessionId])
+}
+
+// ============================================================================
+// Shared State for Agent Coordination
+// ============================================================================
+
+model SharedState {
+  id        String   @id @default(uuid())
+  namespace String   // Workflow or execution scope
+  key       String
+  value     String   // JSON
+  version   Int      @default(1)
+  updatedBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([namespace, key])
+  @@index([namespace])
+}
